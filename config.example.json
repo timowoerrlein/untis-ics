@@ -1,0 +1,25 @@
+{
+	"timezone": "Europe/Berlin",
+	"weeksBehind": 1,
+	"weeksAhead": 4,
+	"refreshMinutes": 60,
+	"labels": { "cancelled": "Entfällt: ", "changed": "Vertretung: " },
+	"children": [
+		{
+			"name": "anna",
+			"title": "Anna",
+			"server": "example.webuntis.com",
+			"school": "my-school",
+			"userEnv": "ANNA_USER",
+			"passwordEnv": "ANNA_PASSWORD"
+		},
+		{
+			"name": "ben",
+			"title": "Ben",
+			"server": "example.webuntis.com",
+			"school": "my-school",
+			"userEnv": "BEN_USER",
+			"passwordEnv": "BEN_PASSWORD"
+		}
+	]
+}

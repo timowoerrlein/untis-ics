@@ -1,0 +1,18 @@
+{
+	"name": "untis-ics",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Fetches the WebUntis timetable of children and serves it as iCalendar feeds.",
+	"type": "module",
+	"engines": { "node": ">=24" },
+	"scripts": {
+		"start": "node --env-file-if-exists=.env src/main.ts",
+		"sync": "node --env-file-if-exists=.env src/main.ts --once",
+		"test": "node --test",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@types/node": "24.10.1",
+		"typescript": "5.9.3"
+	}
+}

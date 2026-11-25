@@ -1,0 +1,14 @@
+services:
+  untis-ics:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      CONFIG: /config/config.json
+    volumes:
+      - ./config.json:/config/config.json:ro
+      - untis-data:/data
+volumes:
+  untis-data:

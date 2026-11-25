@@ -2,7 +2,7 @@ import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ChildConfig, Config } from './config.ts';
 import { buildIcs } from './ics.ts';
-import { createUntisClient, type UntisLesson } from './untis.ts';
+import { createUntisClient, type UntisHomework, type UntisLesson } from './untis.ts';
 
 /** Today's date in a time zone as `YYYY-MM-DD`. */
 export function todayIn(timezone: string, now: number): string {
@@ -25,6 +25,23 @@ export function rangeFor(timezone: string, now: number, weeksBehind: number, wee
 export interface Fetcher {
 	(child: ChildConfig, start: number, end: number): Promise<UntisLesson[]>;
 }
+
+/** Reads a child's homework with the same login. */
+export const fetchHomeworkFromUntis =
+	(env: NodeJS.ProcessEnv) =>
+	async (child: ChildConfig, start: number, end: number): Promise<UntisHomework[]> => {
+		const user = env[child.userEnv];
+		const password = env[child.passwordEnv];
+		if (!user || !password) throw new Error(`${child.userEnv} and ${child.passwordEnv} must be set`);
+		const client = createUntisClient({
+			server: child.server,
+			school: child.school,
+			user,
+			password,
+			...(child.studentId !== undefined && { studentId: child.studentId }),
+		});
+		return client.homework(start, end);
+	};
 
 /** Reads a child's lessons from WebUntis with the login named in the environment. */
 export const fetchFromUntis =

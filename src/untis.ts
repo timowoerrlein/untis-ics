@@ -73,6 +73,37 @@ interface TimetableResponse {
 	errors?: unknown[];
 }
 
+export interface UntisHomework {
+	id: number;
+	/** Short name of the subject, e.g. `F`. */
+	subject: string;
+	/** `YYYYMMDD`. */
+	dueDate: number;
+	text: string;
+	remark: string;
+	completed: boolean;
+}
+
+interface HomeworkResponse {
+	data?: {
+		homeworks?: { id: number; lessonId: number; dueDate: number; text?: string; remark?: string; completed?: boolean }[];
+		lessons?: { id: number; subject?: string }[];
+	};
+}
+
+/** Turns the homework answer into homework, with the subject of each lesson. */
+export function toHomework(response: HomeworkResponse): UntisHomework[] {
+	const subjects = new Map((response.data?.lessons ?? []).map((l) => [l.id, l.subject ?? '']));
+	return (response.data?.homeworks ?? []).map((h) => ({
+		id: h.id,
+		subject: subjects.get(h.lessonId) ?? '',
+		dueDate: h.dueDate,
+		text: (h.text ?? '').trim(),
+		remark: (h.remark ?? '').trim(),
+		completed: h.completed === true,
+	}));
+}
+
 const isoDate = (n: number) =>
 	`${Math.floor(n / 10_000)}-${String(Math.floor(n / 100) % 100).padStart(2, '0')}-${String(n % 100).padStart(2, '0')}`;
 
@@ -143,46 +174,60 @@ export function createUntisClient(
 		return body.result;
 	}
 
+	/** Signs in, picks the student, runs `work` with the REST headers and the student's id, signs out. */
+	async function withStudent<T>(work: (auth: Record<string, string>, studentId: number) => Promise<T>): Promise<T> {
+		const session = await rpc<{ sessionId: string }>('authenticate', {
+			user: credentials.user,
+			password: credentials.password,
+			client: 'untis-ics',
+		});
+		const schoolCookie = Buffer.from(`_${Buffer.from(credentials.school).toString('base64')}`).toString('base64');
+		cookie = `JSESSIONID=${session.sessionId}; schoolname=${schoolCookie}`;
+		try {
+			const token = (await (await call(`${base}/api/token/new`)).text()).trim();
+			const auth = { authorization: `Bearer ${token}` };
+			const data = (await (await call(`${base}/api/rest/view/v1/app/data`, { headers: auth })).json()) as AppData;
+			// A guardian lists the linked students; a student has only themselves.
+			const user = data.user;
+			const students = user?.students?.length ? user.students : user?.person ? [user.person] : [];
+			const student =
+				credentials.studentId === undefined
+					? students.length === 1
+						? students[0]
+						: undefined
+					: students.find((s) => s.id === credentials.studentId);
+			if (!student)
+				throw new UntisError(
+					`cannot pick a student: set "studentId" to one of ${students.map((s) => s.id).join(', ') || '(none)'}`,
+				);
+			return await work(auth, student.id);
+		} finally {
+			// Signing out is a courtesy; a failure must not hide the result.
+			await rpc('logout', {}).catch(() => {});
+		}
+	}
+
 	return {
 		/** Reads the lessons from `start` to `end` (both `YYYYMMDD`, inclusive). */
-		async timetable(start: number, end: number): Promise<UntisLesson[]> {
-			const session = await rpc<{ sessionId: string }>('authenticate', {
-				user: credentials.user,
-				password: credentials.password,
-				client: 'untis-ics',
-			});
-			const schoolCookie = Buffer.from(`_${Buffer.from(credentials.school).toString('base64')}`).toString('base64');
-			cookie = `JSESSIONID=${session.sessionId}; schoolname=${schoolCookie}`;
-			try {
-				const token = (await (await call(`${base}/api/token/new`)).text()).trim();
-				const auth = { authorization: `Bearer ${token}` };
-				const data = (await (await call(`${base}/api/rest/view/v1/app/data`, { headers: auth })).json()) as AppData;
-				// A guardian lists the linked students; a student has only themselves.
-				const user = data.user;
-				const students = user?.students?.length ? user.students : user?.person ? [user.person] : [];
-				const student =
-					credentials.studentId === undefined
-						? students.length === 1
-							? students[0]
-							: undefined
-						: students.find((s) => s.id === credentials.studentId);
-				if (!student)
-					throw new UntisError(
-						`cannot pick a student: set "studentId" to one of ${students.map((s) => s.id).join(', ') || '(none)'}`,
-					);
+		timetable: (start: number, end: number): Promise<UntisLesson[]> =>
+			withStudent(async (auth, studentId) => {
 				const query = new URLSearchParams({
 					start: isoDate(start),
 					end: isoDate(end),
 					format: '1',
 					resourceType: 'STUDENT',
-					resources: String(student.id),
+					resources: String(studentId),
 				});
 				const response = await call(`${base}/api/rest/view/v1/timetable/entries?${query}`, { headers: auth });
 				return toLessons((await response.json()) as TimetableResponse);
-			} finally {
-				// Signing out is a courtesy; a failure must not hide the timetable.
-				await rpc('logout', {}).catch(() => {});
-			}
-		},
+			}),
+
+		/** Reads the homework given from `start` to `end` (both `YYYYMMDD`, inclusive). */
+		homework: (start: number, end: number): Promise<UntisHomework[]> =>
+			withStudent(async (auth) => {
+				const query = new URLSearchParams({ startDate: String(start), endDate: String(end) });
+				const response = await call(`${base}/api/homeworks/lessons?${query}`, { headers: auth });
+				return toHomework((await response.json()) as HomeworkResponse);
+			}),
 	};
 }

@@ -38,6 +38,30 @@ Die ID zeigt WebUntis nicht an. So findest du sie:
   `https://<server>/WebUntis/api/rest/view/v1/app/data`. Unter `user` → `students` steht pro Kind
   eine `id` mit Namen. (Nicht getestet, ob die Seite ohne weiteren Token antwortet.)
 
+## Hausaufgaben als Aufgaben in FamilyOS
+
+Optional legt der Dienst die Hausaufgaben eines Kindes als Aufgaben in FamilyOS an, mit Fälligkeitsdatum,
+dem Fach im Titel und dem vollen Text als Notiz.
+
+1. In FamilyOS einen Schlüssel anlegen: **Settings → You → Connected apps → Add an app**, mit dem Kind
+   als Person, für die der Schlüssel handeln darf. In `.env` eintragen: `FAMOS_KEY=famos_…` und
+   `FAMOS_URL=<Adresse von FamilyOS>`. Im Docker-Container ist `localhost` der Container selbst: nimm die
+   Adresse des Rechners, auf dem FamilyOS läuft (zum Beispiel `http://192.168.178.20:3000`).
+2. In `config.json` beim Kind `"homework": true` und `"famosMemberId": "member_…"` setzen. Die Mitglieds-ID
+   steht unter `actsFor` in der Antwort von `GET <FAMOS_URL>/api/public/v1/` (mit dem Schlüssel im
+   `Authorization: Bearer`-Header).
+
+Ausprobieren, ohne etwas zu schreiben: `node --env-file=.env src/main.ts --dry-run`.
+
+Was passiert bei jedem Lauf:
+- Neue Hausaufgabe, heute oder später fällig: Aufgabe anlegen. Ältere offene Einträge, die Untis noch
+  listet, werden ignoriert.
+- Text oder Datum ändert sich in Untis: Aufgabe anpassen.
+- In Untis als erledigt markiert: Aufgabe in FamilyOS abhaken.
+- In FamilyOS gelöscht: wird nicht neu angelegt. Was der Dienst angelegt hat, merkt er sich in
+  `homework-state.json` im Datenordner (`/data` im Container). Löschst du diese Datei, entstehen die
+  Aufgaben noch einmal.
+
 ## Starten
 
 Lokal zum Ausprobieren (einmal abrufen, Dateien landen in `public/`):

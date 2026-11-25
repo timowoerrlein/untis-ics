@@ -11,7 +11,9 @@
 			"server": "example.webuntis.com",
 			"school": "my-school",
 			"userEnv": "ANNA_USER",
-			"passwordEnv": "ANNA_PASSWORD"
+			"passwordEnv": "ANNA_PASSWORD",
+			"homework": true,
+			"famosMemberId": "member_…"
 		},
 		{
 			"name": "ben",

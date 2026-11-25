@@ -12,6 +12,10 @@ export interface ChildConfig {
 	passwordEnv: string;
 	/** Only for a login with several linked students (a parent login): which one. */
 	studentId?: number;
+	/** Put the child's homework into FamilyOS as tasks (needs FAMOS_URL and FAMOS_KEY). */
+	homework?: boolean;
+	/** The FamilyOS member the tasks belong to (`member_…`). */
+	famosMemberId?: string;
 }
 
 export interface Config {

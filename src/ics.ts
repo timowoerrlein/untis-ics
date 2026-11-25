@@ -12,7 +12,7 @@ export interface IcsOptions {
 
 /** Escapes a text value: backslash, semicolon, comma and line breaks. */
 export const escapeText = (text: string): string =>
-	text.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n|\r/g, '\\n');
+	text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n|\r/g, '\\n');
 
 /** Folds a line to at most 75 octets, continuing with a space, as the standard asks. */
 export function fold(line: string): string {

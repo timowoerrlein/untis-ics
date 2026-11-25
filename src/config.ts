@@ -10,6 +10,8 @@ export interface ChildConfig {
 	/** Names of the environment variables that hold the login. */
 	userEnv: string;
 	passwordEnv: string;
+	/** Only for a login with several linked students (a parent login): which one. */
+	studentId?: number;
 }
 
 export interface Config {

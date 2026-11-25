@@ -19,21 +19,43 @@ const config = parseConfig(
 	}),
 );
 
-test('reads the timetable through authenticate, getTimetable and logout', async () => {
-	const calls: { method: string; cookie?: string; params: Record<string, unknown> }[] = [];
+test('a guardian login reads the timetable of the linked student', async () => {
+	const paths: string[] = [];
 	const server = createServer((req, res) => {
 		let body = '';
 		req.on('data', (c) => (body += c));
 		req.on('end', () => {
-			const { method, params } = JSON.parse(body);
-			calls.push({ method, params, cookie: req.headers.cookie });
-			const result =
-				method === 'authenticate'
-					? { sessionId: 'abc', personType: 5, personId: 42 }
-					: method === 'getTimetable'
-						? [{ id: 1, date: 20261125, startTime: 800, endTime: 845 }]
-						: {};
-			res.end(JSON.stringify({ result }));
+			const url = new URL(req.url ?? '', 'http://x');
+			paths.push(url.pathname);
+			if (url.pathname.endsWith('/jsonrpc.do')) {
+				const { method } = JSON.parse(body);
+				res.end(JSON.stringify({ result: method === 'authenticate' ? { sessionId: 'abc', personType: 12 } : {} }));
+			} else if (url.pathname.endsWith('/token/new')) res.end('tok');
+			else if (url.pathname.endsWith('/app/data'))
+				res.end(JSON.stringify({ user: { person: { id: 1 }, students: [{ id: 42 }] } }));
+			else {
+				assert.equal(req.headers.authorization, 'Bearer tok');
+				assert.equal(url.searchParams.get('resources'), '42');
+				assert.equal(url.searchParams.get('start'), '2026-11-23');
+				res.end(
+					JSON.stringify({
+						days: [
+							{
+								date: '2026-11-25',
+								status: 'REGULAR',
+								gridEntries: [
+									{
+										ids: [7],
+										status: 'CANCELLED',
+										duration: { start: '2026-11-25T07:45', end: '2026-11-25T08:30' },
+										position1: [{ current: { type: 'SUBJECT', status: 'REGULAR', shortName: 'BIO', longName: 'Biologie' } }],
+									},
+								],
+							},
+						],
+					}),
+				);
+			}
 		});
 	});
 	await new Promise<void>((resolve) => server.listen(0, resolve));
@@ -41,10 +63,19 @@ test('reads the timetable through authenticate, getTimetable and logout', async 
 	const client = createUntisClient({ server: 's', school: 'my school', user: 'u', password: 'p' }, { baseUrl });
 	const lessons = await client.timetable(20261123, 20261129);
 	server.close();
-	assert.equal(lessons.length, 1);
-	assert.deepEqual(calls.map((c) => c.method), ['authenticate', 'getTimetable', 'logout']);
-	assert.equal(calls[1]?.cookie, 'JSESSIONID=abc');
-	assert.deepEqual((calls[1]?.params as { options: { element: unknown } }).options.element, { id: 42, type: 5 });
+	assert.deepEqual(lessons, [
+		{
+			id: 7,
+			date: 20261125,
+			startTime: 745,
+			endTime: 830,
+			code: 'cancelled',
+			su: [{ name: 'BIO', longname: 'Biologie' }],
+			te: [],
+			ro: [],
+		},
+	]);
+	assert.ok(paths.at(-1)?.endsWith('/jsonrpc.do'), 'signs out last');
 });
 
 test('turns an Untis error into an UntisError', async () => {

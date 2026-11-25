@@ -45,7 +45,7 @@ test('marks a cancelled lesson and labels a changed one', () => {
 });
 
 test('escapes text and folds long lines', () => {
-	assert.equal(escapeText('a,b;c\\d\ne'), 'a\\,b\;c\\\\d\\ne');
+	assert.equal(escapeText('a,b;c\\d\ne'), 'a\\,b\\;c\\\\d\\ne');
 	const folded = fold(`SUMMARY:${'ä'.repeat(100)}`);
 	for (const line of folded.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75);
 	assert.equal(folded.split('\r\n').join('').replace(/ /g, ''), `SUMMARY:${'ä'.repeat(100)}`);

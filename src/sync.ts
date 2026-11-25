@@ -33,7 +33,7 @@ export const fetchFromUntis =
 		const user = env[child.userEnv];
 		const password = env[child.passwordEnv];
 		if (!user || !password) throw new Error(`${child.userEnv} and ${child.passwordEnv} must be set`);
-		const client = createUntisClient({ server: child.server, school: child.school, user, password });
+		const client = createUntisClient({ server: child.server, school: child.school, user, password, ...(child.studentId !== undefined && { studentId: child.studentId }) });
 		return client.timetable(start, end);
 	};
 

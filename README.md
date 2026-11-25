@@ -15,7 +15,28 @@ cp .env.example .env                 # Logins und optional FEED_TOKEN eintragen
 ```
 
 `server` und `school` stehen in der WebUntis-Adresse deiner Schule
-(`https://<server>/WebUntis/?school=<school>`). Das Login ist das **Schüler-Login** des Kindes.
+(`https://<server>/WebUntis/?school=<school>`). Das Login ist das **Schüler-Login** des Kindes
+oder das **Eltern-Login** (Erziehungsberechtigte).
+
+### Eltern-Login mit mehreren Kindern
+
+Hängt nur ein Kind am Login, ist nichts weiter nötig. Hängen mehrere Kinder daran, legst du in
+`config.json` pro Kind einen eigenen Eintrag an (alle mit denselben `userEnv`/`passwordEnv`) und
+trägst bei jedem die `studentId` als Zahl ein:
+
+```json
+{ "name": "aaron", "title": "Aaron", "server": "…", "school": "…",
+  "userEnv": "ELTERN_USER", "passwordEnv": "ELTERN_PASSWORD", "studentId": 10534 }
+```
+
+Die ID zeigt WebUntis nicht an. So findest du sie:
+
+- Lass `studentId` weg und starte `npm run sync`. Bei mehreren Kindern bricht der Abruf mit
+  `cannot pick a student: set "studentId" to one of …` ab und nennt die möglichen IDs. Welche ID zu
+  welchem Kind gehört, siehst du am Stundenplan in der erzeugten `.ics`.
+- Oder öffne im Browser, während du bei WebUntis angemeldet bist,
+  `https://<server>/WebUntis/api/rest/view/v1/app/data`. Unter `user` → `students` steht pro Kind
+  eine `id` mit Namen. (Nicht getestet, ob die Seite ohne weiteren Token antwortet.)
 
 ## Starten
 
